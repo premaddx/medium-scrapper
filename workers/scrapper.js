@@ -1,10 +1,13 @@
 const cheerio = require('cheerio');
 const moment = require('moment');
+const workerModel = require('./workerModel');
 
 const { parseUrl, toObjectId } = rootRequire('utils');
-const { HOSTNAME, BASEURL } = rootRequire('constants');
+const { HOSTNAME, BASEURL, DEFAULT_ORIGIN } = rootRequire('constants');
 const { urlStoreDAO } = rootRequire('dao');
 const { makeRequest, makeBaseUrlRequest } = rootRequire('services').request;
+let ctr = 0;
+setInterval(() => logger.info(`Concurrency at interval of 3 seconds is ------> ${ctr}`), 3000);
 
 function extractHrefTag(obj, set) {
   Object.keys(obj).forEach(key => {
@@ -26,13 +29,19 @@ function processHTML(html) {
   return set;
 }
 
+function removeFromWorkerModel(result) {
+  result.forEach(obj => {
+    delete workerModel[obj.url];
+  });
+}
+
 function enrichInsertArray(urls) {
   const parsedUrls = [];
   const urlCount = {};
   const queryParams = {};
   urls.forEach(url => {
-    const { href, hostname, pathname, query, origin } = parseUrl(url);
-    const key = `${origin}${pathname}`;
+    const { hostname, pathname, query, origin } = parseUrl(url);
+    const key = `${origin && origin.toUpperCase() !== 'null' ? origin : DEFAULT_ORIGIN}${pathname}`;
     if (hostname === HOSTNAME) {
       if (urlCount[key]) {
         urlCount[key] += 1;
@@ -50,7 +59,6 @@ function enrichInsertArray(urls) {
         queryParams[key] = new Set(Object.keys(query || {}));
         parsedUrls.push({
           url: key,
-          href,
           origin,
           pathname,
           count: urlCount[key],
@@ -74,14 +82,17 @@ function pickNextUrlForExecution() {
 }
 
 async function failureCallback(err, url) {
+  ctr -= 1;
   logger.info(`Error while fetching for ${url}`);
   await urlStoreDAO.findOneAndUpdate({ url }, { $set: { status: 'ERROR' } });
   const nextProcess = await pickNextUrlForExecution();
   if (nextProcess.length > 0) makeRequest(nextProcess[0].url, successCallback, failureCallback)(nextProcess[0].url); // eslint-disable-line
+  ctr += 1;
 }
 
 
 async function successCallback(html, url) {
+  ctr -= 1;
   logger.info(`Fetched successfully for ${url}`);
   await urlStoreDAO.findOneAndUpdate({ url }, { $set: { status: 'PROCESSED' } });
   const urls = processHTML(html);
@@ -97,6 +108,7 @@ async function successCallback(html, url) {
   const updatePromiseArr = [];
   result.forEach(obj => {
     if (transforParsedUrlObject[obj.url]) {
+      logger.info(`Match found for url ${obj.url}`);
       const set = new Set([...transforParsedUrlObject[obj.url].params, ...obj.params]);
       const params = [];
       set.forEach(elem => params.push(elem));
@@ -109,14 +121,27 @@ async function successCallback(html, url) {
       delete transforParsedUrlObject[obj.url];
     }
   });
-  if (updatePromiseArr.length > 0) await Promise.all(updatePromiseArr);
   const insertArr = [];
   Object.keys(transforParsedUrlObject).forEach(key => {
+    logger.info('Match not found ', key);
     insertArr.push(transforParsedUrlObject[key]);
   });
-  if (insertArr.length > 0) await urlStoreDAO.batchInsert(insertArr);
+  if (insertArr.length > 0) {
+    const { ops: result } = await urlStoreDAO.batchInsert(insertArr);
+    removeFromWorkerModel(result);
+  }
+  if (updatePromiseArr.length > 0) await Promise.all(updatePromiseArr);
   const nextProcess = await pickNextUrlForExecution();
-  if (nextProcess.length > 0) makeRequest(nextProcess[0].url, successCallback, failureCallback)(nextProcess[0].url);
+  // update the current pick to IN_PROCESS
+  if (nextProcess.length > 0) {
+    await urlStoreDAO.findByIdAndUpdate(toObjectId(nextProcess[0]._id), {
+      $set: {
+        status: 'IN_PROCESS',
+      },
+    });
+    makeRequest(nextProcess[0].url, successCallback, failureCallback)(nextProcess[0].url);
+  }
+  ctr += 1;
 }
 
 async function init() {
@@ -124,10 +149,9 @@ async function init() {
     // flush all data from DB
     await urlStoreDAO.deleteMany({});
 
-    const { href, pathname, query, origin } = parseUrl(BASEURL);
+    const { pathname, query, origin } = parseUrl(BASEURL);
     const baseUrlInsertObj = await urlStoreDAO.save({
       url: BASEURL,
-      href,
       origin,
       pathname,
       count: 1,
@@ -149,9 +173,12 @@ async function init() {
       if (index < 5) {
         processObj[obj.url] = makeRequest(obj.url, successCallback, failureCallback);
         obj.status = 'IN_PROCESS';
+        workerModel[obj.url] = obj.url;
+        ctr += 1;
       }
     });
-    await urlStoreDAO.batchInsert(parsedUrls);
+    const { ops: result } = await urlStoreDAO.batchInsert(parsedUrls);
+    removeFromWorkerModel(result);
     invokeConcurrentRequests(processObj);
   } catch (e) {
     logger.error(`Error while running scrapper - ${e}`);

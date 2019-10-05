@@ -6,8 +6,8 @@ function init() {
   const ObjectId = Schema.Types.ObjectId;
   const urlStoreSchema = new Schema({
     url_id: { type: ObjectId },
-    href: String,
-    url: String,
+    // href: String,
+    url: { type: String, unique: true },
     origin: String,
     pathname: String,
     count: Number,
