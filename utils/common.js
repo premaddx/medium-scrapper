@@ -1,3 +1,5 @@
+const urlParse = require('url-parse');
+
 function getErrorMessages(error) {
   if (error.details && error.details.length > 0) {
     return error.details.reduce((acc, v) => {
@@ -8,7 +10,11 @@ function getErrorMessages(error) {
   return error.message;
 }
 
+function parseUrl(url = '') {
+  return urlParse(url, true);
+}
 
 module.exports = (obj) => {
   obj.getErrorMessages = getErrorMessages;
+  obj.parseUrl = parseUrl;
 };

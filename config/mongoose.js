@@ -8,6 +8,7 @@ async function init(cb) {
     keepAlive: 300000,
     connectTimeoutMS: 30000,
     useNewUrlParser: true,
+    useCreateIndex: true,
     useUnifiedTopology: true,
   };
 

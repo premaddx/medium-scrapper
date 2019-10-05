@@ -74,8 +74,12 @@ function count(query) {
   return this.Model.count(query).exec();
 }
 
-function remove(query) {
-  return this.Model.remove(query);
+function deleteOne(query) {
+  return this.Model.deleteOne(query);
+}
+
+function deleteMany(query) {
+  return this.Model.deleteMany(query);
 }
 
 function findOneAndRemove(query) {
@@ -92,7 +96,7 @@ function getModel() {
 }
 
 function batchInsert(batch, options) {
-  return this.Model.collection.insert(batch, options);
+  return this.Model.collection.insertMany(batch, options);
 }
 
 function distinct(feild, query, options) {
@@ -139,10 +143,7 @@ function aggregateByPagination({ queryPipe, totalQueryPipe }) {
 
 
 // Constructor function
-function DAO() {
-  // assert.ok(model);
-  // this.Model = model;
-}
+function DAO() {}
 
 DAO.prototype = {
   find,
@@ -153,7 +154,8 @@ DAO.prototype = {
   findByPagination,
   findOne,
   findOneAndRemove,
-  remove,
+  deleteOne,
+  deleteMany,
   update,
   count,
   save,

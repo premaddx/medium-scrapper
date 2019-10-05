@@ -7,8 +7,8 @@ const Schema = mongoose.Schema;
 
 // compile models here
 
-const User = mongoose.model('User', require('./user.schema')(Schema));
+const UrlStore = mongoose.model('UrlStore', require('./urlStore.schema')(Schema));
 
 module.exports = {
-  User,
+  UrlStore,
 };

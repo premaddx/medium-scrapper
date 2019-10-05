@@ -8,6 +8,7 @@ const appServer = require('http').Server(app);
 // mounting middlewares
 const { basic, handleError } = require('./middleware');
 const router = require('./router');
+const initScrapper = require('../workers/scrapper');
 
 function init() {
   basic(app);
@@ -23,6 +24,8 @@ function init() {
     }
     logger.info(`Environment: ${config.get('NODE_ENV')}`);
     logger.info(`Express Server Up and Running @PORT: ${config.get('PORT')} | at localhost`);
+    // initialize a scrapper
+    initScrapper();
   });
 }
 

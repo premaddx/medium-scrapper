@@ -16,6 +16,7 @@
     "bluebird": "^3.7.0",
     "body-parser": "^1.17.2",
     "boom": "^5.2.0",
+    "cheerio": "^1.0.0-rc.3",
     "cors": "^2.8.4",
     "dotenv": "^4.0.0",
     "express": "^4.15.4",
@@ -24,6 +25,7 @@
     "morgan": "^1.8.2",
     "nconf": "^0.8.4",
     "request": "^2.81.0",
+    "url-parse": "^1.4.7",
     "winston": "^2.3.1"
   },
   "devDependencies": {

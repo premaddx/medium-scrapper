@@ -1,5 +1,5 @@
-const userDAO = require('./user.DAO');
+const urlStoreDAO = require('./urlStore.DAO')();
 
 module.exports = {
-  userDAO,
+  urlStoreDAO,
 };
