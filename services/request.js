@@ -13,13 +13,13 @@ function makeBaseUrlRequest() {
 
 
 function makeRequest(url, successCallback, errorCallback) {
-  return (key) => new Promise((resolve, reject) => {
+  return (url) => {
     request(url, (err, resp, html) => {
-      logger.info(`Fetching for process - ${key}`);
-      if (err) return reject(errorCallback(err, key));
-      return resolve(successCallback(html, key));
+      logger.info(`Fetching for process - ${url}`);
+      if (err) return errorCallback(err, url);
+      return successCallback(html, url);
     });
-  });
+  };
 }
 
 module.exports = {

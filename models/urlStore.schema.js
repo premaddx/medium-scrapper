@@ -3,13 +3,21 @@ const assert = require('assert');
 let Schema = null;
 
 function init() {
+  const ObjectId = Schema.Types.ObjectId;
   const urlStoreSchema = new Schema({
+    url_id: { type: ObjectId },
+    href: String,
     url: String,
     origin: String,
     pathname: String,
-    href: { type: String, unique: true },
     count: Number,
     params: Array,
+    status: String,
+  }, {
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   });
 
   return urlStoreSchema;
