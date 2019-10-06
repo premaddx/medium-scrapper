@@ -7,7 +7,7 @@ const { HOSTNAME, BASEURL, DEFAULT_ORIGIN } = rootRequire('constants');
 const { urlStoreDAO } = rootRequire('dao');
 const { makeRequest, makeBaseUrlRequest } = rootRequire('services').request;
 let ctr = 0;
-setInterval(() => logger.info(`Concurrency at interval of 3 seconds is ------> ${ctr}`), 3000);
+setInterval(() => logger.info(`Concurrency at interval of 2 seconds is ------> ${ctr}`), 2000);
 
 function extractHrefTag(obj, set) {
   Object.keys(obj).forEach(key => {
@@ -94,52 +94,56 @@ async function failureCallback(err, url) {
 async function successCallback(html, url) {
   ctr -= 1;
   logger.info(`Fetched successfully for ${url}`);
-  await urlStoreDAO.findOneAndUpdate({ url }, { $set: { status: 'PROCESSED' } });
-  const urls = processHTML(html);
-  const parsedUrls = enrichInsertArray(urls);
-  const transforParsedUrlObject = {};
-  parsedUrls.forEach(obj => {
-    transforParsedUrlObject[obj.url] = obj;
-  });
-  const result = await urlStoreDAO.find({
-    baseQuery: { url: { $in: Object.keys(transforParsedUrlObject) } },
-  });
-  // iterate through the result and then enrich update/insert object
-  const updatePromiseArr = [];
-  result.forEach(obj => {
-    if (transforParsedUrlObject[obj.url]) {
-      logger.info(`Match found for url ${obj.url}`);
-      const set = new Set([...transforParsedUrlObject[obj.url].params, ...obj.params]);
-      const params = [];
-      set.forEach(elem => params.push(elem));
-      updatePromiseArr.push(urlStoreDAO.findByIdAndUpdate(toObjectId(obj._id), {
-        $set: {
-          count: (obj.count + transforParsedUrlObject[obj.url].count),
-          params,
-        },
-      }));
-      delete transforParsedUrlObject[obj.url];
-    }
-  });
-  const insertArr = [];
-  Object.keys(transforParsedUrlObject).forEach(key => {
-    logger.info('Match not found ', key);
-    insertArr.push(transforParsedUrlObject[key]);
-  });
-  if (insertArr.length > 0) {
-    const { ops: result } = await urlStoreDAO.batchInsert(insertArr);
-    removeFromWorkerModel(result);
-  }
-  if (updatePromiseArr.length > 0) await Promise.all(updatePromiseArr);
-  const nextProcess = await pickNextUrlForExecution();
-  // update the current pick to IN_PROCESS
-  if (nextProcess.length > 0) {
-    await urlStoreDAO.findByIdAndUpdate(toObjectId(nextProcess[0]._id), {
-      $set: {
-        status: 'IN_PROCESS',
-      },
+  try {
+    await urlStoreDAO.findOneAndUpdate({ url }, { $set: { status: 'PROCESSED' } });
+    const urls = processHTML(html);
+    const parsedUrls = enrichInsertArray(urls);
+    const transforParsedUrlObject = {};
+    parsedUrls.forEach(obj => {
+      transforParsedUrlObject[obj.url] = obj;
     });
-    makeRequest(nextProcess[0].url, successCallback, failureCallback)(nextProcess[0].url);
+    const result = await urlStoreDAO.find({
+      baseQuery: { url: { $in: Object.keys(transforParsedUrlObject) } },
+    });
+    // iterate through the result and then enrich update/insert object
+    const updatePromiseArr = [];
+    result.forEach(obj => {
+      if (transforParsedUrlObject[obj.url]) {
+        logger.info(`Match found for url ${obj.url}`);
+        const set = new Set([...transforParsedUrlObject[obj.url].params, ...obj.params]);
+        const params = [];
+        set.forEach(elem => params.push(elem));
+        updatePromiseArr.push(urlStoreDAO.findByIdAndUpdate(toObjectId(obj._id), {
+          $set: {
+            count: (obj.count + transforParsedUrlObject[obj.url].count),
+            params,
+          },
+        }));
+        delete transforParsedUrlObject[obj.url];
+      }
+    });
+    const insertArr = [];
+    Object.keys(transforParsedUrlObject).forEach(key => {
+      logger.info('Match not found ', key);
+      insertArr.push(transforParsedUrlObject[key]);
+    });
+    if (insertArr.length > 0) {
+      const { ops: result } = await urlStoreDAO.batchInsert(insertArr);
+      removeFromWorkerModel(result);
+    }
+    if (updatePromiseArr.length > 0) await Promise.all(updatePromiseArr);
+    const nextProcess = await pickNextUrlForExecution();
+    // update the current pick to IN_PROCESS
+    if (nextProcess.length > 0) {
+      await urlStoreDAO.findByIdAndUpdate(toObjectId(nextProcess[0]._id), {
+        $set: {
+          status: 'IN_PROCESS',
+        },
+      });
+      makeRequest(nextProcess[0].url, successCallback, failureCallback)(nextProcess[0].url);
+    }
+  } catch (e) {
+    logger.error(e.message);
   }
   ctr += 1;
 }
