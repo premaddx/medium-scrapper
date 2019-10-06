@@ -41,7 +41,7 @@ function enrichInsertArray(urls) {
   const queryParams = {};
   urls.forEach(url => {
     const { hostname, pathname, query, origin } = parseUrl(url);
-    const key = `${origin && origin.toUpperCase() !== 'null' ? origin : DEFAULT_ORIGIN}${pathname}`;
+    const key = `${origin && origin.toUpperCase() !== 'NULL' ? origin : DEFAULT_ORIGIN}${pathname}`;
     if (hostname === HOSTNAME) {
       if (urlCount[key]) {
         urlCount[key] += 1;

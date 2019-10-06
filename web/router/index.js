@@ -1,6 +1,6 @@
 const router = require('express').Router();
 
-require('./api/test')(router);
+require('./api/records')(router);
 
 /**
  * Mounting respective paths.
