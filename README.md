@@ -6,12 +6,13 @@ Crawler to recursively crawl through medium.com while maintaining a concurrency 
 
 1. Clone the project.
 2. Run command - $ npm install
-3. Create a folder - env
-4. Create files - default.json and development.json for declaring the logger level. File content e.g. -
-    {
-        "LOGGER_LEVEL": "debug"
-    }
-5. Create a file .env which contains the environment configurations. e.g.
+3. Create a folder - env in the root directory of project
+4. Create files - default.json and development.json inside newly created folder env for declaring the logger level.
+    File content for both files e.g. -
+        {
+            "LOGGER_LEVEL": "debug"
+        }
+5. Create a file .env in the root directory of project which contains the environment configurations. e.g.
 
     NODE_ENV=development
     PORT=5000
