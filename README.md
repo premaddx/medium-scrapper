@@ -9,7 +9,7 @@
 3. Create a folder - env in the root directory of project
 4. Create files - default.json and development.json inside newly created folder env for declaring the logger level.
     File content for both files e.g. -
-        ```json
+        ```javascript
         {
                 "LOGGER_LEVEL": "debug"
         }
