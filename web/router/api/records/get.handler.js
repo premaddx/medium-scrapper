@@ -16,7 +16,10 @@ async function logic() {
 function handler(req, res, next) {
   logic()
     .then((data) => {
-      res.json(data);
+      res.json({
+        success: true,
+        data,
+      });
     })
     .catch(err => next(err));
 }
