@@ -172,7 +172,15 @@ async function successCallback(html, url) {
       makeRequest(nextProcess[0].url, successCallback, failureCallback)(nextProcess[0].url);
     }
   } catch (e) {
-    logger.error(e.message);
+    logger.error(`Restricting duplicate entry for - ${e && e.op && e.op.url}`);
+    if (e.name && e.name.toUpperCase() === 'BULKWRITEERROR' && Object.keys(e.op || {}).length > 0) {
+      // update the count for the url
+      await urlStoreDAO.findByIdAndUpdate(toObjectId(e.op._id), {
+        $set: {
+          count: e.op.count + 1,
+        },
+      });
+    }
   }
 }
 
